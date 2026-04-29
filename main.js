@@ -3,6 +3,8 @@
 * https://github.com/weni-ai/agentic-cx
 **/
 
+// temporary test
+
 if (!window.agenticCXScriptAlreadyInserted) {
     window.agenticCXScriptAlreadyInserted = true;
 
