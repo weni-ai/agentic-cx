@@ -1,5 +1,5 @@
 /**
-* agentic-cx v1.0.2
+* agentic-cx v1.0.3
 * https://github.com/weni-ai/agentic-cx
 **/
 
