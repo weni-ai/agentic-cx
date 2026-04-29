@@ -37,10 +37,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          NEW_VERSION=$(npm version ${{ steps.version_type.outputs.type }} -m "chore: release %s")
+          NEW_VERSION=$(npm version ${{ steps.version_type.outputs.type }} --no-git-tag-version)
           sed -i "s|^\* agentic-cx.*|* agentic-cx ${NEW_VERSION}|" main.js
-          git add main.js
-          git commit --amend --no-edit
+          git add package.json main.js
+          git commit -m "chore: release ${NEW_VERSION}"
+          git tag -a "${NEW_VERSION}" -m "chore: release ${NEW_VERSION}"
           git push origin HEAD:main --follow-tags
 
       - name: Configure AWS Credentials
