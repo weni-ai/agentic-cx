@@ -293,6 +293,26 @@ if (!window.agenticCXScriptAlreadyInserted) {
         });
     }
 
+    function getUserEmail() {
+        const fastStoreEmail = window.faststore_sdk_stores?.get('fs::session')?.read?.()?.person?.email;
+
+        if (fastStoreEmail) {
+            return fastStoreEmail;
+        }
+
+        try {
+            const VTEXIOEmail = localStorage.getItem('orderform') && JSON.parse(localStorage.getItem('orderform'))?.clientProfileData?.email;
+
+            if (VTEXIOEmail) {
+                return VTEXIOEmail;
+            }
+        } catch {
+            // continue
+        }
+
+        return null;
+    }
+
     async function getValidOrderFormId() {
         const orderFormId = await getOrderFormId();
 
@@ -312,5 +332,14 @@ if (!window.agenticCXScriptAlreadyInserted) {
         WebChat.setCustomField('orderform', orderFormId);
     }).catch((error) => {
         log('[VTEX CX] failed to set WebChat custom fields:', error?.message || error);
+    });
+
+    waitFor([
+        () => window.WebChat,
+        getUserEmail,
+    ], 5, Infinity).then(([WebChat, email]) => {
+        WebChat.setCustomField('email', email);
+    }).catch((error) => {
+        log('[VTEX CX] failed to set WebChat email field:', error?.message || error);
     });
 }
