@@ -34,6 +34,7 @@ jobs:
           fi
 
       - name: Bump package version and update main.js header
+        id: bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -43,6 +44,7 @@ jobs:
           git commit -m "chore: release ${NEW_VERSION}"
           git tag -a "${NEW_VERSION}" -m "chore: release ${NEW_VERSION}"
           git push origin HEAD:main --follow-tags
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -60,5 +62,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.bump.outputs.version }}
           generate_release_notes: true
           prerelease: false
