@@ -1,0 +1,63 @@
+name: Create Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Define version bump type
+        id: version_type
+        run: |
+          if git log ${{ github.event.before }}..${{ github.sha }} --pretty=format:"%s" | grep -q "^feat"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump package version and update main.js header
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          NEW_VERSION=$(npm version ${{ steps.version_type.outputs.type }} -m "chore: release %s")
+          sed -i "s|^\* agentic-cx.*|* agentic-cx ${NEW_VERSION}|" main.js
+          git add main.js
+          git commit --amend --no-edit
+          git push origin HEAD:main --follow-tags
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp \
+            main.js \
+            s3://${{ secrets.AWS_S3_BUCKET_NAME }}/agentic-cx.js
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: false
