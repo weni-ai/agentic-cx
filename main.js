@@ -251,7 +251,21 @@ if (!window.agenticCXScriptAlreadyInserted) {
         });
     }
 
-    function getSegment() {
+    async function getSegment() {
+        try {
+            const response = await fetch('/api/segments');
+
+            if (response.ok) {
+                const apiSegment = await response.json();
+
+                if (apiSegment) {
+                    return JSON.stringify(apiSegment);
+                }
+            }
+        } catch (error) {
+            log('getSegment: /api/segments request failed:', error?.message || error);
+        }
+
         const fastStoreSegment = window.faststore_sdk_stores?.get("fs::session")?.read?.();
 
         if (fastStoreSegment) {
