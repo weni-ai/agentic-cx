@@ -380,8 +380,14 @@ if (!window.agenticCXScriptAlreadyInserted) {
     getSegment,
     getValidOrderFormId,
   ]).then(([WebChat, segment, orderFormId]) => {
+    const accountName = window.__RUNTIME__?.account || window.VTEX_METADATA?.account;
+
     WebChat.setCustomField('segment', segment);
     WebChat.setCustomField('orderform', orderFormId);
+
+    if (accountName) {
+      WebChat.setCustomField('vtex_account', accountName);
+    }
   }).catch((error) => {
     log('[VTEX CX] failed to set WebChat custom fields:', error?.message || error);
   });
