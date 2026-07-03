@@ -156,68 +156,6 @@ if (!window.agenticCXScriptAlreadyInserted) {
     log('initial seeOrderForm threw synchronously:', error?.message || error);
   }
 
-  const S3_WWC_SCRIPT_PATH_RE = /\/apptypes\/wwc\/[^/?]+\/script\.js$/;
-
-  function appendCacheBusterToS3ScriptUrl(url) {
-    if (typeof url !== 'string' || !S3_WWC_SCRIPT_PATH_RE.test(url.split('?')[0])) {
-      return url;
-    }
-
-    try {
-      const parsedUrl = new URL(url, document.baseURI);
-      parsedUrl.searchParams.set('v', `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      return parsedUrl.toString();
-    } catch {
-      return url;
-    }
-  }
-
-  function installS3ScriptCacheBuster() {
-    if (window.__agenticCXS3ScriptCacheBusterInstalled) {
-      return;
-    }
-
-    window.__agenticCXS3ScriptCacheBusterInstalled = true;
-
-    const originalCreateElement = document.createElement.bind(document);
-
-    document.createElement = function createElement(tagName, options) {
-      const element = originalCreateElement(tagName, options);
-
-      if (String(tagName).toLowerCase() !== 'script') {
-        return element;
-      }
-
-      const originalSetAttribute = element.setAttribute.bind(element);
-
-      element.setAttribute = function setAttribute(name, value) {
-        if (name === 'src') {
-          return originalSetAttribute(name, appendCacheBusterToS3ScriptUrl(value));
-        }
-
-        return originalSetAttribute(name, value);
-      };
-
-      let scriptSrc = '';
-
-      Object.defineProperty(element, 'src', {
-        configurable: true,
-        enumerable: true,
-        get() {
-          return scriptSrc;
-        },
-        set(value) {
-          scriptSrc = appendCacheBusterToS3ScriptUrl(value);
-          originalSetAttribute('src', scriptSrc);
-        },
-      });
-
-      return element;
-    };
-  }
-
-  installS3ScriptCacheBuster();
-
   function tryToRenderWebChat(account) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
