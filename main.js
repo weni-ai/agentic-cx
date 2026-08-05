@@ -51,7 +51,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
   };
 
   const timeToCallNextAbandonedCartUpdateInSeconds = 15 * 60; // 15 minutes
-  let seeOrderFormTimeout;
+  let notifyAbandonedCartTimeout;
 
   function getDetails() {
     return new Promise((resolve, reject) => {
@@ -68,33 +68,83 @@ if (!window.agenticCXScriptAlreadyInserted) {
     });
   }
 
-  function seeOrderForm() {
-    log('calling seeOrderForm function');
+  async function getProfileFromGraphQL() {
+    try {
+      const response = await fetch('/_v/private/graphql/v1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `query {
+            profile {
+              firstName
+              phone
+              homePhone
+              businessPhone
+            }
+          }`,
+        }),
+      });
+      const result = await response.json();
+      return result?.data?.profile || null;
+    } catch (error) {
+      log('getProfileFromGraphQL failed:', error?.message || error);
+      return null;
+    }
+  }
 
-    clearTimeout(seeOrderFormTimeout);
+  function notifyAbandonedCart() {
+    log('calling notifyAbandonedCart function');
+
+    clearTimeout(notifyAbandonedCartTimeout);
 
     fetch('/api/checkout/pub/orderForm')
       .then((response) => response.json())
       .then(async (data) => {
-        seeOrderFormTimeout = setTimeout(
-          seeOrderForm,
+        notifyAbandonedCartTimeout = setTimeout(
+          notifyAbandonedCart,
           timeToCallNextAbandonedCartUpdateInSeconds * 1e3
         );
 
-        const { profile, account } = await getDetails();
-
-        const phone = profile?.phone?.value || data?.clientProfileData?.phone;
-        const name = profile?.firstName?.value || data?.clientProfileData?.firstName || profile?.lastName?.value;
-        const accountName = window.__RUNTIME__?.account || account?.accountName?.value;
         const cart_id = data?.orderFormId;
+        let phone = data?.clientProfileData?.phone;
+        let name = data?.clientProfileData?.firstName;
+        let accountName = window.__RUNTIME__?.account;
+
+        if (!phone || !name) {
+          const gqlProfile = await getProfileFromGraphQL();
+
+          if (!phone) {
+            phone = gqlProfile?.homePhone || gqlProfile?.businessPhone || gqlProfile?.phone;
+          }
+
+          if (!name) {
+            name = gqlProfile?.firstName;
+          }
+        }
+
+        if (!phone || !name || !accountName) {
+          const { profile, account } = await getDetails();
+
+          if (!phone) {
+            phone = profile?.phone?.value;
+          }
+
+          if (!name) {
+            name = profile?.firstName?.value || profile?.lastName?.value;
+          }
+
+          if (!accountName) {
+            accountName = account?.accountName?.value;
+          }
+        }
 
         if (!accountName) {
-          log('seeOrderForm: missing accountName, skipping abandoned cart notification');
+          log('notifyAbandonedCart: missing accountName, skipping abandoned cart notification');
           return;
         }
 
         if (!cart_id || !phone || !name) {
-          log('seeOrderForm: missing cart_id, phone or name, skipping abandoned cart notification');
+          log('notifyAbandonedCart: missing cart_id, phone or name, skipping abandoned cart notification');
           return;
         }
 
@@ -123,14 +173,14 @@ if (!window.agenticCXScriptAlreadyInserted) {
               .catch((error) => log('abandoned-cart fallback failed:', error?.message || error));
           });
       })
-      .catch((error) => log('seeOrderForm failed:', error?.message || error));
+      .catch((error) => log('notifyAbandonedCart failed:', error?.message || error));
   }
 
   function handleEvents(e) {
     const eventName = e.data?.eventName;
     switch (eventName) {
       case 'vtex:addToCart': {
-        seeOrderForm();
+        notifyAbandonedCart();
         return;
       }
     }
@@ -142,8 +192,8 @@ if (!window.agenticCXScriptAlreadyInserted) {
     if (typeof $ === 'function') {
       const $win = $(window);
       if ($win && typeof $win.on === 'function') {
-        const seeOrderFormThrottled = throttle(seeOrderForm, 3e3);
-        $win.on('orderFormUpdated.vtex', seeOrderFormThrottled);
+        const notifyAbandonedCartThrottled = throttle(notifyAbandonedCart, 3e3);
+        $win.on('orderFormUpdated.vtex', notifyAbandonedCartThrottled);
       }
     }
   } catch (error) {
@@ -151,9 +201,9 @@ if (!window.agenticCXScriptAlreadyInserted) {
   }
 
   try {
-    seeOrderForm();
+    notifyAbandonedCart();
   } catch (error) {
-    log('initial seeOrderForm threw synchronously:', error?.message || error);
+    log('initial notifyAbandonedCart threw synchronously:', error?.message || error);
   }
 
   function tryToRenderWebChat(account) {
