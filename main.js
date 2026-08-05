@@ -51,7 +51,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
   };
 
   const timeToCallNextAbandonedCartUpdateInSeconds = 15 * 60; // 15 minutes
-  let seeOrderFormTimeout;
+  let notifyAbandonedCartTimeout;
 
   function getDetails() {
     return new Promise((resolve, reject) => {
@@ -92,16 +92,16 @@ if (!window.agenticCXScriptAlreadyInserted) {
     }
   }
 
-  function seeOrderForm() {
-    log('calling seeOrderForm function');
+  function notifyAbandonedCart() {
+    log('calling notifyAbandonedCart function');
 
-    clearTimeout(seeOrderFormTimeout);
+    clearTimeout(notifyAbandonedCartTimeout);
 
     fetch('/api/checkout/pub/orderForm')
       .then((response) => response.json())
       .then(async (data) => {
-        seeOrderFormTimeout = setTimeout(
-          seeOrderForm,
+        notifyAbandonedCartTimeout = setTimeout(
+          notifyAbandonedCart,
           timeToCallNextAbandonedCartUpdateInSeconds * 1e3
         );
 
@@ -116,12 +116,12 @@ if (!window.agenticCXScriptAlreadyInserted) {
         const cart_id = data?.orderFormId;
 
         if (!accountName) {
-          log('seeOrderForm: missing accountName, skipping abandoned cart notification');
+          log('notifyAbandonedCart: missing accountName, skipping abandoned cart notification');
           return;
         }
 
         if (!cart_id || !phone || !name) {
-          log('seeOrderForm: missing cart_id, phone or name, skipping abandoned cart notification');
+          log('notifyAbandonedCart: missing cart_id, phone or name, skipping abandoned cart notification');
           return;
         }
 
@@ -150,14 +150,14 @@ if (!window.agenticCXScriptAlreadyInserted) {
               .catch((error) => log('abandoned-cart fallback failed:', error?.message || error));
           });
       })
-      .catch((error) => log('seeOrderForm failed:', error?.message || error));
+      .catch((error) => log('notifyAbandonedCart failed:', error?.message || error));
   }
 
   function handleEvents(e) {
     const eventName = e.data?.eventName;
     switch (eventName) {
       case 'vtex:addToCart': {
-        seeOrderForm();
+        notifyAbandonedCart();
         return;
       }
     }
@@ -169,8 +169,8 @@ if (!window.agenticCXScriptAlreadyInserted) {
     if (typeof $ === 'function') {
       const $win = $(window);
       if ($win && typeof $win.on === 'function') {
-        const seeOrderFormThrottled = throttle(seeOrderForm, 3e3);
-        $win.on('orderFormUpdated.vtex', seeOrderFormThrottled);
+        const notifyAbandonedCartThrottled = throttle(notifyAbandonedCart, 3e3);
+        $win.on('orderFormUpdated.vtex', notifyAbandonedCartThrottled);
       }
     }
   } catch (error) {
@@ -178,9 +178,9 @@ if (!window.agenticCXScriptAlreadyInserted) {
   }
 
   try {
-    seeOrderForm();
+    notifyAbandonedCart();
   } catch (error) {
-    log('initial seeOrderForm threw synchronously:', error?.message || error);
+    log('initial notifyAbandonedCart threw synchronously:', error?.message || error);
   }
 
   function tryToRenderWebChat(account) {
