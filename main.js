@@ -68,6 +68,30 @@ if (!window.agenticCXScriptAlreadyInserted) {
     });
   }
 
+  async function getProfilePhoneFromGraphQL() {
+    try {
+      const response = await fetch('/_v/private/graphql/v1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `query {
+            profile {
+              phone
+              homePhone
+              businessPhone
+            }
+          }`,
+        }),
+      });
+      const result = await response.json();
+      const gqlProfile = result?.data?.profile;
+      return gqlProfile?.homePhone || gqlProfile?.businessPhone || gqlProfile?.phone || null;
+    } catch (error) {
+      log('getProfilePhoneFromGraphQL failed:', error?.message || error);
+      return null;
+    }
+  }
+
   function seeOrderForm() {
     log('calling seeOrderForm function');
 
@@ -83,7 +107,10 @@ if (!window.agenticCXScriptAlreadyInserted) {
 
         const { profile, account } = await getDetails();
 
-        const phone = profile?.phone?.value || data?.clientProfileData?.phone;
+        const phone =
+          data?.clientProfileData?.phone ||
+          (await getProfilePhoneFromGraphQL()) ||
+          profile?.phone?.value;
         const name = profile?.firstName?.value || data?.clientProfileData?.firstName || profile?.lastName?.value;
         const accountName = window.__RUNTIME__?.account || account?.accountName?.value;
         const cart_id = data?.orderFormId;
