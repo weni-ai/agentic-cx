@@ -105,15 +105,30 @@ if (!window.agenticCXScriptAlreadyInserted) {
           timeToCallNextAbandonedCartUpdateInSeconds * 1e3
         );
 
-        const { profile, account } = await getDetails();
-
-        const phone =
-          data?.clientProfileData?.phone ||
-          (await getProfilePhoneFromGraphQL()) ||
-          profile?.phone?.value;
-        const name = profile?.firstName?.value || data?.clientProfileData?.firstName || profile?.lastName?.value;
-        const accountName = window.__RUNTIME__?.account || account?.accountName?.value;
         const cart_id = data?.orderFormId;
+        let phone = data?.clientProfileData?.phone;
+        let name = data?.clientProfileData?.firstName;
+        let accountName = window.__RUNTIME__?.account;
+
+        if (!phone) {
+          phone = await getProfilePhoneFromGraphQL();
+        }
+
+        if (!phone || !name || !accountName) {
+          const { profile, account } = await getDetails();
+
+          if (!phone) {
+            phone = profile?.phone?.value;
+          }
+
+          if (!name) {
+            name = profile?.firstName?.value || profile?.lastName?.value;
+          }
+
+          if (!accountName) {
+            accountName = account?.accountName?.value;
+          }
+        }
 
         if (!accountName) {
           log('notifyAbandonedCart: missing accountName, skipping abandoned cart notification');
