@@ -68,7 +68,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
     });
   }
 
-  async function getProfilePhoneFromGraphQL() {
+  async function getProfileFromGraphQL() {
     try {
       const response = await fetch('/_v/private/graphql/v1', {
         method: 'POST',
@@ -76,6 +76,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
         body: JSON.stringify({
           query: `query {
             profile {
+              firstName
               phone
               homePhone
               businessPhone
@@ -84,10 +85,9 @@ if (!window.agenticCXScriptAlreadyInserted) {
         }),
       });
       const result = await response.json();
-      const gqlProfile = result?.data?.profile;
-      return gqlProfile?.homePhone || gqlProfile?.businessPhone || gqlProfile?.phone || null;
+      return result?.data?.profile || null;
     } catch (error) {
-      log('getProfilePhoneFromGraphQL failed:', error?.message || error);
+      log('getProfileFromGraphQL failed:', error?.message || error);
       return null;
     }
   }
@@ -110,8 +110,16 @@ if (!window.agenticCXScriptAlreadyInserted) {
         let name = data?.clientProfileData?.firstName;
         let accountName = window.__RUNTIME__?.account;
 
-        if (!phone) {
-          phone = await getProfilePhoneFromGraphQL();
+        if (!phone || !name) {
+          const gqlProfile = await getProfileFromGraphQL();
+
+          if (!phone) {
+            phone = gqlProfile?.homePhone || gqlProfile?.businessPhone || gqlProfile?.phone;
+          }
+
+          if (!name) {
+            name = gqlProfile?.firstName;
+          }
         }
 
         if (!phone || !name || !accountName) {
