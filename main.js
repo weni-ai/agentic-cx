@@ -55,7 +55,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
 
   function getDetails() {
     return new Promise((resolve, reject) => {
-      fetch('/api/sessions?items=*')
+      fetchApi('/api/sessions?items=*')
         .then((response) => response.json())
         .then((data) => {
           log('got user data:', JSON.safeStringify(data.namespaces?.profile, 2));
@@ -97,7 +97,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
 
     clearTimeout(notifyAbandonedCartTimeout);
 
-    fetch('/api/checkout/pub/orderForm')
+    fetchApi('/api/checkout/pub/orderForm')
       .then((response) => response.json())
       .then(async (data) => {
         notifyAbandonedCartTimeout = setTimeout(
@@ -301,25 +301,28 @@ if (!window.agenticCXScriptAlreadyInserted) {
     });
   }
 
-  async function fetchSegments() {
+  async function fetchApi(path, options) {
     const canonical = window.__RUNTIME__?.binding?.canonicalBaseAddress
       ?.replace(/\/+$/, '');
 
     if (canonical) {
       try {
-        const response = await fetch(`${window.location.protocol}//${canonical}/api/segments`);
+        const response = await fetch(
+          `${window.location.protocol}//${canonical}${path}`,
+          options
+        );
         if (response.ok) return response;
       } catch (error) {
-        log('getSegment: canonical /api/segments failed:', error?.message || error);
+        log('fetchApi: canonical', path, 'failed:', error?.message || error);
       }
     }
 
-    return fetch('/api/segments');
+    return fetch(path, options);
   }
 
   async function getSegment() {
     try {
-      const response = await fetchSegments();
+      const response = await fetchApi('/api/segments');
 
       if (response.ok) {
         const apiSegment = await response.json();
@@ -365,7 +368,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
     }
 
     return new Promise((resolve, reject) => {
-      fetch('/api/checkout/pub/orderForm')
+      fetchApi('/api/checkout/pub/orderForm')
         .then((response) => response.json())
         .then(async (data) => {
           resolve(data.orderFormId);
@@ -404,7 +407,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
   }
 
   async function getSessionToken() {
-    const response = await fetch('/api/sessions', {
+    const response = await fetchApi('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
