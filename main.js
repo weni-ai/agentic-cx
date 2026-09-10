@@ -301,9 +301,25 @@ if (!window.agenticCXScriptAlreadyInserted) {
     });
   }
 
+  async function fetchSegments() {
+    const canonical = window.__RUNTIME__?.binding?.canonicalBaseAddress
+      ?.replace(/\/+$/, '');
+
+    if (canonical) {
+      try {
+        const response = await fetch(`${window.location.protocol}//${canonical}/api/segments`);
+        if (response.ok) return response;
+      } catch (error) {
+        log('getSegment: canonical /api/segments failed:', error?.message || error);
+      }
+    }
+
+    return fetch('/api/segments');
+  }
+
   async function getSegment() {
     try {
-      const response = await fetch('/api/segments');
+      const response = await fetchSegments();
 
       if (response.ok) {
         const apiSegment = await response.json();
