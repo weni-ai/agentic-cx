@@ -402,7 +402,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
 
     const poll = async () => {
       if (!window.WebChat) {
-        setTimeout(poll, 5 * 1e3);
+        setTimeout(poll, 60 * 1e3);
         return;
       }
 
@@ -417,7 +417,7 @@ if (!window.agenticCXScriptAlreadyInserted) {
         log('watchSessionToken: failed to fetch session token:', error?.message || error);
       }
 
-      setTimeout(poll, 20 * 1e3);
+      setTimeout(poll, 60 * 1e3);
     };
 
     poll();
